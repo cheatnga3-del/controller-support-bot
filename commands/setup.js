@@ -9,6 +9,7 @@ const {
     CategoryChannel
 } = require('discord.js');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,7 +17,7 @@ module.exports = {
         .setDescription('Set up the Controller Support ticket system')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-    async execute(interaction, client, protectionCtx) {
+    async execute(interaction, client, config, protectionCtx) {
         // ── Defer (can take a moment) ──
         await interaction.deferReply({ ephemeral: true });
 
@@ -74,8 +75,11 @@ module.exports = {
         // ══════════════════════════════════════
         // 3. Build and send the panel embed
         // ══════════════════════════════════════
+        let bannerAttachment = null;
         const bannerPath = path.resolve(__dirname, '..', config.bannerPath);
-        const bannerAttachment = new AttachmentBuilder(bannerPath, { name: 'banner.png' });
+        if (fs.existsSync(bannerPath)) {
+            bannerAttachment = new AttachmentBuilder(bannerPath, { name: 'banner.png' });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(config.colors.primary)
@@ -90,9 +94,12 @@ module.exports = {
                 '📋 **Apply for Team** — Join our team\n\n' +
                 '*Select a category below to open a ticket.*'
             )
-            .setImage('attachment://banner.png')
             .setFooter({ text: 'Controller Support • Tickets' })
             .setTimestamp();
+
+        if (bannerAttachment) {
+            embed.setImage('attachment://banner.png');
+        }
 
         const selectMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
@@ -118,11 +125,15 @@ module.exports = {
             }
         } catch (_) {}
 
-        await panelChannel.send({
+        const sendOptions = {
             embeds: [embed],
-            files: [bannerAttachment],
             components: [selectMenu]
-        });
+        };
+        if (bannerAttachment) {
+            sendOptions.files = [bannerAttachment];
+        }
+
+        await panelChannel.send(sendOptions);
 
         // ══════════════════════════════════════
         // 4. Create log channel if it doesn't exist
@@ -157,7 +168,7 @@ module.exports = {
                 `> Panel: <#${panelChannel.id}>`,
                 `> Category: \`${ticketCategory.name}\``,
                 `> Logs: <#${logChannel.id}>`,
-                `> Banner: Attached`,
+                bannerAttachment ? `> Banner: Attached` : `> Banner: Not found (optional)`,
                 ``,
                 `**Protections active:**`,
                 `• 1 open ticket per user`,

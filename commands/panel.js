@@ -7,6 +7,7 @@ const {
     PermissionFlagsBits
 } = require('discord.js');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,9 +15,12 @@ module.exports = {
         .setDescription('Resend the Controller Support ticket panel')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-    async execute(interaction, client, config) {
+    async execute(interaction, client, config, protectionCtx) {
+        let bannerAttachment = null;
         const bannerPath = path.resolve(__dirname, '..', config.bannerPath);
-        const bannerAttachment = new AttachmentBuilder(bannerPath, { name: 'banner.png' });
+        if (fs.existsSync(bannerPath)) {
+            bannerAttachment = new AttachmentBuilder(bannerPath, { name: 'banner.png' });
+        }
 
         const embed = new EmbedBuilder()
             .setColor(config.colors.primary)
@@ -31,9 +35,12 @@ module.exports = {
                 '📋 **Apply for Team** — Join our team\n\n' +
                 '*Select a category below to open a ticket.*'
             )
-            .setImage('attachment://banner.png')
             .setFooter({ text: 'Controller Support • Tickets' })
             .setTimestamp();
+
+        if (bannerAttachment) {
+            embed.setImage('attachment://banner.png');
+        }
 
         const selectMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
@@ -49,12 +56,15 @@ module.exports = {
                 )
         );
 
-        await interaction.reply({ ephemeral: true, content: 'Panel sent.' });
-
-        await interaction.channel.send({
+        const sendOptions = {
             embeds: [embed],
-            files: [bannerAttachment],
             components: [selectMenu]
-        });
+        };
+        if (bannerAttachment) {
+            sendOptions.files = [bannerAttachment];
+        }
+
+        await interaction.reply({ ephemeral: true, content: 'Panel sent.' });
+        await interaction.channel.send(sendOptions);
     }
 };
