@@ -6,8 +6,8 @@ const {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('close')
-        .setDescription('Force-close the current ticket')
+        .setName('controller-close')
+        .setDescription('Force-close the current Controller Support ticket')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction, client, config, protectionCtx) {

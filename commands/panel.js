@@ -10,8 +10,8 @@ const path = require('path');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('panel')
-        .setDescription('Resend the ticket panel embed')
+        .setName('controller-panel')
+        .setDescription('Resend the Controller Support ticket panel')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
     async execute(interaction, client, config) {

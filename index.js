@@ -172,7 +172,7 @@ client.on('interactionCreate', async (interaction) => {
         if (!command) return;
 
         // /setup and /panel require MANAGE_GUILD
-        if (['setup', 'panel'].includes(interaction.commandName)) {
+        if (['controller', 'controller-panel'].includes(interaction.commandName)) {
             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
                 return interaction.reply({
                     content: 'You need **Manage Server** permission to use this.',

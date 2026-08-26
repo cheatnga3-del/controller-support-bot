@@ -12,7 +12,7 @@ const path = require('path');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('setup')
+        .setName('controller')
         .setDescription('Set up the Controller Support ticket system')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
