@@ -1,4 +1,4 @@
-# Controller Support — Discord Ticket Bot v2
+# Controller Support — Discord Ticket Bot v3
 
 ## Install
 
