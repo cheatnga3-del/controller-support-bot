@@ -1,0 +1,14 @@
+{
+  "name": "controller-support",
+  "version": "1.0.0",
+  "description": "Controller Support — Discord Ticket Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "better-sqlite3": "^9.4.3",
+    "text2png": "^2.3.0"
+  }
+}
