@@ -14,6 +14,7 @@ const {
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const { REST, Routes } = require('discord.js');
 const config = require('./config.js');
 const { handleTicketOpen, handleCloseTicket, handleClaimTicket, handleTranscript } = require('./handlers/ticketHandler');
 
@@ -143,6 +144,22 @@ client.once('ready', async () => {
     console.log(`[Controller Support] Protections active: rate-limit, one-ticket-per-user, safe-delete, audit-log`);
 
     client.user.setActivity('Support Tickets', { type: 3 });
+
+    // ── Auto-register slash commands ──
+    try {
+        const commands = [];
+        for (const [, command] of client.commands) {
+            commands.push(command.data.toJSON());
+        }
+        const rest = new REST({ version: '10' }).setToken(config.token);
+        const data = await rest.put(
+            Routes.applicationGuildCommands(config.clientId, config.guildId),
+            { body: commands }
+        );
+        console.log(`[Controller Support] Registered ${data.length} slash command(s).`);
+    } catch (err) {
+        console.error('[Controller Support] Failed to register commands:', err.message);
+    }
 
     // Rebuild open ticket cache from existing channels on startup
     for (const guild of client.guilds.cache.values()) {
