@@ -25,14 +25,17 @@ async function handleTicketOpen(interaction, client, config, protection) {
     const guild = interaction.guild;
     const user = interaction.user;
 
-    // ── Find or create ticket category ──
+    // ── Find or create per-category parent channel ──
+    // e.g. category "buy" → a "Payments" category channel
+    const categoryChannelName = categoryConfig.categoryName || categoryConfig.label; // e.g. "Payments" or "Support"
+
     let ticketCategory = guild.channels.cache.find(
-        ch => ch.type === ChannelType.GuildCategory && ch.name === 'Tickets'
+        ch => ch.type === ChannelType.GuildCategory && ch.name.toLowerCase() === categoryChannelName.toLowerCase()
     );
 
     if (!ticketCategory) {
         ticketCategory = await guild.channels.create({
-            name: 'Tickets',
+            name: categoryChannelName,
             type: ChannelType.GuildCategory,
             permissionOverwrites: [
                 { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
@@ -50,12 +53,13 @@ async function handleTicketOpen(interaction, client, config, protection) {
         });
     }
 
-    // ── Ticket counter (safe) ──
+    // ── Per-category ticket counter ──
+    const prefix = categoryConfig.value; // "buy", "support", etc.
     const ticketNumber = guild.channels.cache.filter(
-        ch => ch.name.startsWith('ticket-') && ch.parent?.id === ticketCategory.id
+        ch => ch.name.startsWith(`${prefix}-`) && ch.parent?.id === ticketCategory.id
     ).size + 1;
 
-    const channelName = `ticket-${String(ticketNumber).padStart(4, '0')}`;
+    const channelName = `${prefix}-${String(ticketNumber).padStart(4, '0')}`;
 
     // ── Create the ticket channel ──
     const ticketChannel = await guild.channels.create({

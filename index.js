@@ -100,12 +100,18 @@ function canCreateChannel(guild) {
 
 // ── Safe channel deletion — only deletes ticket channels, never guild essentials ──
 async function safeDeleteChannel(channel) {
-    // Guard: only delete channels under the "Tickets" category or with ticket naming
-    if (!channel.parent || channel.parent.name !== config.ticketCategoryName) {
+    // Guard: only delete channels that belong to a known ticket category parent
+    // and have a ticket-like name (e.g. buy-0001, support-0001)
+    const knownPrefixes = config.ticketCategories.map(c => c.value);
+    const validParent = config.ticketCategories.some(c =>
+        c.categoryName && c.categoryName.toLowerCase() === (channel.parent?.name || '').toLowerCase()
+    );
+    if (!validParent) {
         console.log(`[Protection] Blocked deletion of non-ticket channel: ${channel.name}`);
         return false;
     }
-    if (!channel.name.startsWith('ticket-')) {
+    const hasTicketPrefix = knownPrefixes.some(p => channel.name.toLowerCase().startsWith(`${p}-`));
+    if (!hasTicketPrefix) {
         console.log(`[Protection] Blocked deletion of non-ticket channel: ${channel.name}`);
         return false;
     }
@@ -162,9 +168,12 @@ client.once('ready', async () => {
     }
 
     // Rebuild open ticket cache from existing channels on startup
+    const ticketPrefixes = config.ticketCategories.map(c => `${c.value}-`);
     for (const guild of client.guilds.cache.values()) {
         for (const [, channel] of guild.channels.cache) {
-            if (channel.type === ChannelType.GuildText && channel.name.startsWith('ticket-')) {
+            const isTicket = channel.type === ChannelType.GuildText &&
+                ticketPrefixes.some(p => channel.name.toLowerCase().startsWith(p));
+            if (isTicket) {
                 // Extract userId from topic if present
                 if (channel.topic && channel.topic.startsWith('owner:')) {
                     const ownerId = channel.topic.split(':')[1];
@@ -292,14 +301,6 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_category_select') {
 
-            // ── Protection: Rate Limit ──
-            if (isRateLimited(interaction.user.id)) {
-                return interaction.reply({
-                    content: `You're creating tickets too fast. Wait ${Math.ceil(TICKET_COOLDOWN_MS / 1000)}s.`,
-                    ephemeral: true
-                });
-            }
-
             // ── Protection: One open ticket per user ──
             if (hasOpenTicket(interaction.user.id)) {
                 return interaction.reply({
@@ -317,9 +318,6 @@ client.on('interactionCreate', async (interaction) => {
                     ephemeral: true
                 });
             }
-
-            // ── Set rate limit ──
-            setRateLimit(interaction.user.id);
 
             await handleTicketOpen(interaction, client, config, {
                 userTicketCache,

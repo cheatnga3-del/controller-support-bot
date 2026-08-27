@@ -24,33 +24,37 @@ module.exports = {
         const guild = interaction.guild;
 
         // ══════════════════════════════════════
-        // 1. Create/find "Tickets" category
+        // 1. Create per-category parent channels
         // ══════════════════════════════════════
-        let ticketCategory = guild.channels.cache.find(
-            ch => ch.type === ChannelType.GuildCategory && ch.name === 'Tickets'
-        );
-
-        if (!ticketCategory) {
-            ticketCategory = await guild.channels.create({
-                name: 'Tickets',
-                type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    {
-                        id: guild.roles.everyone,
-                        deny: [PermissionFlagsBits.ViewChannel]
-                    },
-                    {
-                        id: client.user.id,
-                        allow: [
-                            PermissionFlagsBits.ViewChannel,
-                            PermissionFlagsBits.SendMessages,
-                            PermissionFlagsBits.ManageChannels,
-                            PermissionFlagsBits.ManageMessages,
-                            PermissionFlagsBits.ReadMessageHistory
-                        ]
-                    }
-                ]
-            });
+        const ticketCategoryNames = [];
+        for (const cat of config.ticketCategories) {
+            const catName = cat.categoryName || cat.label;
+            let catChannel = guild.channels.cache.find(
+                ch => ch.type === ChannelType.GuildCategory && ch.name.toLowerCase() === catName.toLowerCase()
+            );
+            if (!catChannel) {
+                catChannel = await guild.channels.create({
+                    name: catName,
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: [
+                        {
+                            id: guild.roles.everyone,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        },
+                        {
+                            id: client.user.id,
+                            allow: [
+                                PermissionFlagsBits.ViewChannel,
+                                PermissionFlagsBits.SendMessages,
+                                PermissionFlagsBits.ManageChannels,
+                                PermissionFlagsBits.ManageMessages,
+                                PermissionFlagsBits.ReadMessageHistory
+                            ]
+                        }
+                    ]
+                });
+            }
+            ticketCategoryNames.push(catName);
         }
 
         // ══════════════════════════════════════
@@ -166,13 +170,13 @@ module.exports = {
             content: [
                 `✅ **Controller Support** ticket system is live.`,
                 `> Panel: <#${panelChannel.id}>`,
-                `> Category: \`${ticketCategory.name}\``,
+                `> Categories: ${ticketCategoryNames.map(n => `\`${n}\``).join(', ')}`,
                 `> Logs: <#${logChannel.id}>`,
                 bannerAttachment ? `> Banner: Attached` : `> Banner: Not found (optional)`,
                 ``,
                 `**Protections active:**`,
                 `• 1 open ticket per user`,
-                `• 60s cooldown between ticket creation`,
+                `• Per-category ticket numbering`,
                 `• Mass-delete detection (auto-lockdown)`,
                 `• Mass role escalation alerts`,
                 `• Audit logging on all actions`,

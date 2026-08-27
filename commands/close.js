@@ -15,7 +15,8 @@ module.exports = {
         const { handleCloseTicket } = require('../handlers/ticketHandler');
 
         // ── Validate this is a ticket channel ──
-        if (!interaction.channel.name.startsWith('ticket-')) {
+        const isTicket = config.ticketCategories.some(c => interaction.channel.name.toLowerCase().startsWith(`${c.value}-`));
+        if (!isTicket) {
             return interaction.reply({
                 content: 'This command can only be used in a ticket channel.',
                 ephemeral: true

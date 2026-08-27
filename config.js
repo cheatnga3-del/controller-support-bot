@@ -23,11 +23,11 @@ const config = {
         warning: 0xFEE75C
     },
     ticketCategories: fileConfig.ticketCategories || [
-        { label: 'Support', value: 'support', description: 'Get help with an issue', emoji: '🛠️', color: 0x5865F2 },
-        { label: 'Buy', value: 'buy', description: 'Purchase a product or service', emoji: '💰', color: 0x57F287 },
-        { label: 'Resell', value: 'resell', description: 'Reseller inquiries', emoji: '🔄', color: 0xFEE75C },
-        { label: 'Partnership', value: 'partnership', description: 'Collaborate with us', emoji: '🤝', color: 0xEB459E },
-        { label: 'Apply for Team', value: 'apply', description: 'Join our team', emoji: '📋', color: 0xED4245 }
+        { label: 'Support', value: 'support', categoryName: 'Support', description: 'Get help with an issue', emoji: '🛠️', color: 0x5865F2 },
+        { label: 'Buy', value: 'buy', categoryName: 'Payments', description: 'Purchase a product or service', emoji: '💰', color: 0x57F287 },
+        { label: 'Resell', value: 'resell', categoryName: 'Resell', description: 'Reseller inquiries', emoji: '🔄', color: 0xFEE75C },
+        { label: 'Partnership', value: 'partnership', categoryName: 'Partnership', description: 'Collaborate with us', emoji: '🤝', color: 0xEB459E },
+        { label: 'Apply for Team', value: 'apply', categoryName: 'Apply', description: 'Join our team', emoji: '📋', color: 0xED4245 }
     ]
 };
 

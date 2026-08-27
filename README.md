@@ -35,17 +35,19 @@
 ## Features
 
 - 5 ticket categories: Support, Buy, Resell, Partnership, Apply for Team
+- Each category gets its own parent folder (e.g. Buy tickets go under a "Payments" category)
+- Per-category ticket numbering (buy-0001, support-0001, etc.)
 - Custom banner embed
 - Ticket transcripts on close
 - Staff claim system
 - Audit logging
+- No cooldown between ticket creation
 
 ## Protections (Anti-Nuke)
 
 - **1 ticket per user** — users can't spam ticket creation
-- **60s cooldown** between ticket creation attempts
-- **Close cooldown** — prevents rapid close spam
-- **Safe delete** — bot only deletes channels inside the "Tickets" category with `ticket-` prefix
+- **Per-category numbering** — tickets counted within their own category
+- **Safe delete** — bot only deletes channels inside ticket category folders with the `{category}-` prefix
 - **Mass-delete detection** — if 5+ channels deleted in 30s, triggers server lockdown + alert
 - **Mass role escalation alert** — detects rapid admin role grants
 - **Channel count safeguard** — blocks creation if server hits 500 channels
