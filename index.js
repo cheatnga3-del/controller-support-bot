@@ -317,16 +317,6 @@ client.on('interactionCreate', async (interaction) => {
 
             const categoryValue = interaction.values[0];
 
-            // ── Protection: One open ticket per user PER CATEGORY ──
-            // Users can have one Support, one Buy, etc. open at the same time,
-            // but not two of the same category.
-            if (hasOpenTicket(interaction.user.id, categoryValue)) {
-                return interaction.reply({
-                    content: 'You already have an open ticket in this category. Close it before opening another.',
-                    ephemeral: true
-                });
-            }
-
             // ── Protection: Guild channel limit ──
             if (!canCreateChannel(interaction.guild)) {
                 await auditLog(interaction.guild, 'PROTECTION TRIGGERED',
