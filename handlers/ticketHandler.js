@@ -271,6 +271,45 @@ async function handleCloseTicket(interaction, client, config, protection) {
         await logChannel.send(logPayload);
     }
 
+    // ── Send transcript to #transcript-ticket channel ──
+    try {
+        let transcriptChannel = guild.channels.cache.find(
+            ch => ch.type === ChannelType.GuildText && ch.name === 'transcript-ticket'
+        );
+        if (!transcriptChannel) {
+            transcriptChannel = await guild.channels.create({
+                name: 'transcript-ticket',
+                type: ChannelType.GuildText,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone,
+                        deny: [PermissionFlagsBits.SendMessages],
+                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
+                    }
+                ]
+            });
+        }
+
+        const transcriptEmbed = new EmbedBuilder()
+            .setColor(config.colors.warning)
+            .setTitle(`📄 Transcript: ${channel.name}`)
+            .setDescription(
+                `**Ticket owner:** <@${ownerId || 'unknown'}>\n` +
+                `**Category:** ${categoryConfig ? categoryConfig.label : categoryValue}\n` +
+                `**Closed by:** ${user.tag}\n` +
+                `**Date:** <t:${Math.floor(Date.now() / 1000)}:f>`
+            )
+            .setTimestamp();
+
+        const transcriptPayload = {
+            embeds: [transcriptEmbed]
+        };
+        if (transcriptAttachment) transcriptPayload.files = [transcriptAttachment];
+        await transcriptChannel.send(transcriptPayload);
+    } catch (err) {
+        console.log(`[Controller Support] Could not post transcript to #transcript-ticket: ${err.message}`);
+    }
+
     // ── Unregister ticket ──
     if (ownerId) {
         unregisterTicket(ownerId, channel.id);
