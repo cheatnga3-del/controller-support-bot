@@ -3,6 +3,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
+    StringSelectMenuBuilder,
     ChannelType,
     PermissionFlagsBits,
     AttachmentBuilder
@@ -172,6 +173,26 @@ async function handleTicketOpen(interaction, client, config, protection) {
         content: `Ticket opened: <#${ticketChannel.id}>`,
         ephemeral: true
     });
+
+    // ── Reset the panel dropdown so it can be re-picked immediately ──
+    try {
+        const freshMenu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('ticket_category_select')
+                .setPlaceholder('Select a ticket category...')
+                .addOptions(
+                    config.ticketCategories.map(cat => ({
+                        label: cat.label,
+                        value: cat.value,
+                        description: cat.description,
+                        emoji: cat.emoji
+                    }))
+                )
+        );
+        await interaction.message.edit({ components: [freshMenu] });
+    } catch (err) {
+        console.log(`[Controller Support] Could not reset panel: ${err.message}`);
+    }
 
     // ── Audit log ──
     await auditLog(guild, 'Ticket Opened',
