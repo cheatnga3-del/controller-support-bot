@@ -53,11 +53,30 @@ async function handleTicketOpen(interaction, client, config, protection) {
         });
     }
 
-    // ── Per-category ticket counter ──
+    // ── Per-category persistent ticket counter ──
+    // Store the last-used counter in the category parent channel's topic so
+    // numbering continues across closes and restarts (support → 0001, 0002, 0003...)
     const prefix = categoryConfig.value; // "buy", "support", etc.
-    const ticketNumber = guild.channels.cache.filter(
-        ch => ch.name.startsWith(`${prefix}-`) && ch.parent?.id === ticketCategory.id
-    ).size + 1;
+
+    let lastNumber = 0;
+    if (ticketCategory.topic && ticketCategory.topic.startsWith('tick-counter:')) {
+        lastNumber = parseInt(ticketCategory.topic.split(':')[1], 10) || 0;
+    }
+
+    // Also account for any existing channels in the category (prevents collisions)
+    const existingMax = guild.channels.cache
+        .filter(ch => ch.parent?.id === ticketCategory.id && ch.name.startsWith(`${prefix}-`))
+        .reduce((max, ch) => {
+            const n = parseInt(ch.name.split('-')[1], 10);
+            return Number.isInteger(n) && n > max ? n : max;
+        }, 0);
+
+    const ticketNumber = Math.max(lastNumber, existingMax) + 1;
+
+    // Persist the new counter back to the category topic
+    try {
+        await ticketCategory.setTopic(`tick-counter:${ticketNumber}`, 'Ticket counter update');
+    } catch (_) {}
 
     const channelName = `${prefix}-${String(ticketNumber).padStart(4, '0')}`;
 
@@ -106,7 +125,7 @@ async function handleTicketOpen(interaction, client, config, protection) {
     }
 
     // ── Register ticket ──
-    registerTicket(user.id, ticketChannel.id);
+    registerTicket(user.id, ticketChannel.id, categoryValue);
 
     // ── Build ticket embed ──
     const ticketEmbed = new EmbedBuilder()
@@ -245,7 +264,7 @@ async function handleCloseTicket(interaction, client, config, protection) {
 
     // ── Unregister ticket ──
     if (ownerId) {
-        unregisterTicket(ownerId);
+        unregisterTicket(ownerId, channel.id);
     }
 
     // ── Audit log ──

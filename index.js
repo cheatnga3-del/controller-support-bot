@@ -67,16 +67,28 @@ function setRateLimit(userId) {
     rateLimitCache.set(userId, Date.now());
 }
 
-function hasOpenTicket(userId) {
-    return userTicketCache.has(userId);
+function hasOpenTicket(userId, category) {
+    const tickets = userTicketCache.get(userId);
+    if (!tickets) return false;
+    return tickets.some(t => t.category === category);
 }
 
-function registerTicket(userId, channelId) {
-    userTicketCache.set(userId, { channelId, createdAt: Date.now() });
+function registerTicket(userId, channelId, category) {
+    const existing = userTicketCache.get(userId) || [];
+    existing.push({ channelId, category, createdAt: Date.now() });
+    userTicketCache.set(userId, existing);
 }
 
-function unregisterTicket(userId) {
-    userTicketCache.delete(userId);
+function unregisterTicket(userId, channelId) {
+    if (!userId) return;
+    const tickets = userTicketCache.get(userId);
+    if (!tickets) return;
+    const filtered = tickets.filter(t => t.channelId !== channelId);
+    if (filtered.length === 0) {
+        userTicketCache.delete(userId);
+    } else {
+        userTicketCache.set(userId, filtered);
+    }
 }
 
 function getOpenTicketCount() {
@@ -174,11 +186,13 @@ client.once('ready', async () => {
             const isTicket = channel.type === ChannelType.GuildText &&
                 ticketPrefixes.some(p => channel.name.toLowerCase().startsWith(p));
             if (isTicket) {
-                // Extract userId from topic if present
+                // Extract userId and category from topic if present
                 if (channel.topic && channel.topic.startsWith('owner:')) {
                     const ownerId = channel.topic.split(':')[1];
-                    if (ownerId && !userTicketCache.has(ownerId)) {
-                        registerTicket(ownerId, channel.id);
+                    const catPart = channel.topic.split('|').find(p => p.startsWith('category:'));
+                    const category = catPart ? catPart.split(':')[1] : channel.name.split('-')[0];
+                    if (ownerId && !hasOpenTicket(ownerId, category)) {
+                        registerTicket(ownerId, channel.id, category);
                         console.log(`[Controller Support] Recovered open ticket: ${channel.name} (owner: ${ownerId})`);
                     }
                 }
@@ -301,10 +315,14 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'ticket_category_select') {
 
-            // ── Protection: One open ticket per user ──
-            if (hasOpenTicket(interaction.user.id)) {
+            const categoryValue = interaction.values[0];
+
+            // ── Protection: One open ticket per user PER CATEGORY ──
+            // Users can have one Support, one Buy, etc. open at the same time,
+            // but not two of the same category.
+            if (hasOpenTicket(interaction.user.id, categoryValue)) {
                 return interaction.reply({
-                    content: 'You already have an open ticket. Close it first before opening a new one.',
+                    content: 'You already have an open ticket in this category. Close it before opening another.',
                     ephemeral: true
                 });
             }
