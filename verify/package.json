@@ -1,0 +1,12 @@
+{
+  "name": "controller-verify",
+  "version": "1.0.0",
+  "description": "Controller Support — Discord Verification Bot (RestoreCord compatible)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  }
+}
