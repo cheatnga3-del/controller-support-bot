@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { REST, Routes } = require('discord.js');
 const config = require('./config.js');
+const storage = require('./storage.js');
 const { handleTicketOpen, handleCloseTicket, handleClaimTicket, handleTranscript } = require('./handlers/ticketHandler');
 
 // ── Anti-Abuse: In-memory tracking ──
@@ -162,6 +163,9 @@ client.once('ready', async () => {
     console.log(`[Controller Support] Protections active: rate-limit, one-ticket-per-user, safe-delete, audit-log`);
 
     client.user.setActivity('Support Tickets', { type: 3 });
+
+    // ── Init persistent storage ──
+    storage.init();
 
     // ── Auto-register slash commands ──
     try {

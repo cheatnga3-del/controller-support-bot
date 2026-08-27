@@ -55,29 +55,12 @@ async function handleTicketOpen(interaction, client, config, protection) {
     }
 
     // ── Per-category persistent ticket counter ──
-    // Store the last-used counter in the category parent channel's topic so
-    // numbering continues across closes and restarts (support → 0001, 0002, 0003...)
+    // Stored in a persistent file so numbers NEVER reset — they continue
+    // across all closes, restarts, and redeploys (support → 0001, 0002, 0003...)
     const prefix = categoryConfig.value; // "buy", "support", etc.
 
-    let lastNumber = 0;
-    if (ticketCategory.topic && ticketCategory.topic.startsWith('tick-counter:')) {
-        lastNumber = parseInt(ticketCategory.topic.split(':')[1], 10) || 0;
-    }
-
-    // Also account for any existing channels in the category (prevents collisions)
-    const existingMax = guild.channels.cache
-        .filter(ch => ch.parent?.id === ticketCategory.id && ch.name.startsWith(`${prefix}-`))
-        .reduce((max, ch) => {
-            const n = parseInt(ch.name.split('-')[1], 10);
-            return Number.isInteger(n) && n > max ? n : max;
-        }, 0);
-
-    const ticketNumber = Math.max(lastNumber, existingMax) + 1;
-
-    // Persist the new counter back to the category topic
-    try {
-        await ticketCategory.setTopic(`tick-counter:${ticketNumber}`, 'Ticket counter update');
-    } catch (_) {}
+    const storage = require('../storage.js');
+    const ticketNumber = storage.nextTicketNumber(prefix);
 
     const channelName = `${prefix}-${String(ticketNumber).padStart(4, '0')}`;
 
@@ -252,16 +235,21 @@ async function handleCloseTicket(interaction, client, config, protection) {
     }
 
     messages.reverse(); // Chronological order
-    const transcript = messages.join('\n');
+    const transcript = messages.join('\n') || 'No messages.';
 
-    // ── Save transcript to file ──
-    const transcriptDir = path.join(__dirname, '..', 'transcripts');
+    // ── Save transcript to PERSISTENT storage (survives close + redeploy) ──
+    const storage = require('../storage.js');
+    const persistedFile = storage.saveTranscript(categoryValue, channel.name, transcript);
+
+    // Also keep a temp copy to attach to the log message
+    let transcriptAttachment = null;
+    const transcriptDir = path.join(__dirname, '..', 'tmp');
     if (!fs.existsSync(transcriptDir)) fs.mkdirSync(transcriptDir, { recursive: true });
-
     const transcriptFile = path.join(transcriptDir, `${channel.name}.txt`);
-    fs.writeFileSync(transcriptFile, transcript, 'utf-8');
-
-    const transcriptAttachment = new AttachmentBuilder(transcriptFile, { name: `${channel.name}-transcript.txt` });
+    try {
+        fs.writeFileSync(transcriptFile, transcript, 'utf-8');
+        transcriptAttachment = new AttachmentBuilder(transcriptFile, { name: `${channel.name}-transcript.txt` });
+    } catch (_) {}
 
     // ── Send transcript to log channel ──
     const logChannel = guild.channels.cache.get(config.ticketLogChannelId);
@@ -273,14 +261,14 @@ async function handleCloseTicket(interaction, client, config, protection) {
                 `**Closed by:** ${user.tag} (${user.id})\n` +
                 `**Ticket owner:** <@${ownerId || 'unknown'}>\n` +
                 `**Category:** ${categoryConfig ? categoryConfig.label : categoryValue}\n` +
-                `**Channel:** #${channel.name}`
+                `**Channel:** #${channel.name}\n` +
+                (persistedFile ? `**Transcript saved:** \`${persistedFile}\`` : '')
             )
             .setTimestamp();
 
-        await logChannel.send({
-            embeds: [closeEmbed],
-            files: [transcriptAttachment]
-        });
+        const logPayload = { embeds: [closeEmbed] };
+        if (transcriptAttachment) logPayload.files = [transcriptAttachment];
+        await logChannel.send(logPayload);
     }
 
     // ── Unregister ticket ──
@@ -400,10 +388,16 @@ async function handleTranscript(interaction, client, config, protection) {
     }
 
     messages.reverse();
-    const transcript = messages.join('\n');
+    const transcript = messages.join('\n') || 'No messages.';
 
-    // ── Save temporarily ──
-    const transcriptDir = path.join(__dirname, '..', 'transcripts');
+    // ── Persist transcript (proof, survives redeploy) ──
+    const storage = require('../storage.js');
+    const catPart = (channel.topic || '').split('|').find(p => p.startsWith('category:'));
+    const category = catPart ? catPart.split(':')[1] : channel.name.split('-')[0];
+    storage.saveTranscript(category, channel.name, transcript);
+
+    // ── Save temporarily for attachment ──
+    const transcriptDir = path.join(__dirname, '..', 'tmp');
     if (!fs.existsSync(transcriptDir)) fs.mkdirSync(transcriptDir, { recursive: true });
 
     const transcriptFile = path.join(transcriptDir, `${channel.name}-transcript.txt`);
